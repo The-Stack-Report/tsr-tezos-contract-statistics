@@ -15,5 +15,5 @@ PG_PW = os.getenv("PG_PW")
 
 engine_params = f'postgresql+psycopg2://{PG_USER}:{PG_PW}@{PG_ADDRESS}/{PG_DB}'
 alchemyEngine = create_engine(engine_params, pool_recycle=3600)
-dbConnection = alchemyEngine.connect()
+dbConnection = alchemyEngine.connect().execution_options(stream_results=True)
 

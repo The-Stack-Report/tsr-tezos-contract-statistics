@@ -1,11 +1,11 @@
 import pandas as pd
 from datetime import date, datetime, timedelta
 from utils.date_utils import extract_date_range
-
+import math
 
 today = date.today()
 
-def operations_to_stats_by_day(ops_df):
+def operations_to_stats_by_day(ops_df, tezos_daily_chain_stats_df):
     print(f"calculating stats by day for {len(ops_df)} operations")
 
     daysStats = []
@@ -24,14 +24,48 @@ def operations_to_stats_by_day(ops_df):
         # contract_initiators = initiators_df[initiators_df["initiator"].str.startswith("KT")]
         dayStats = {
             "date": date,
-            "contract_call_ops": len(ops_for_day),
+            "contract_call_ops": len(ops_for_day)
             # "active_wallets": len(wallet_initiators),
             # "active_contracts": len(contract_initiators)
         }
 
+        blockSpaceStats = {
+            
+            "baker_fee_xtz_sum": ops_for_day["baker_fee_xtz"].sum(),
+            "baker_fee_xtz_max": ops_for_day["baker_fee_xtz"].max(),
+            "baker_fee_xtz_median": ops_for_day["baker_fee_xtz"].median(),
+            "baker_fee_xtz_mean": ops_for_day["baker_fee_xtz"].mean()
+        }
+
+        chain_stats_for_day = tezos_daily_chain_stats_df[tezos_daily_chain_stats_df["date"] == date]
+        chain_stats_for_day = chain_stats_for_day.to_dict("records")[0]
+
+        chain_transactions = chain_stats_for_day["transactions"]
+
+        chain_contract_calls = chain_stats_for_day["entrypoint_call_transactions"]
+
+        chain_baker_fee_xtz = chain_stats_for_day["baker_fee_xtz_sum"]
+
+        
+
+        blockSpaceStats["transaction_share"] = dayStats["contract_call_ops"] / chain_transactions
+        blockSpaceStats["transaction_share_percentage"] = blockSpaceStats["transaction_share"] * 100
+
+        blockSpaceStats["contract_call_share"] = dayStats["contract_call_ops"] / chain_contract_calls
+        blockSpaceStats["contract_call_share_percentage"] = blockSpaceStats["contract_call_share"] * 100
+
+        blockSpaceStats["baker_fee_share"] = blockSpaceStats["baker_fee_xtz_sum"] / chain_baker_fee_xtz
+        blockSpaceStats["baker_fee_share_percentage"] = blockSpaceStats["baker_fee_share"] * 100
+
+        for key in blockSpaceStats.keys():
+            if isinstance(blockSpaceStats[key], float) and math.isnan(blockSpaceStats[key]):
+                blockSpaceStats[key] = 0
+
         if len(ops_for_day) > 0:
             entrypointStats = ops_for_day.groupby("Entrypoint").size().to_dict()
             dayStats["entrypoints"] = entrypointStats
+        
+        dayStats["block_space"] = blockSpaceStats
         daysStats.append(dayStats)
 
     return daysStats

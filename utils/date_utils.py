@@ -1,8 +1,18 @@
 import pandas as pd
-from datetime import date, timedelta
+from datetime import (
+    datetime,
+    date,
+    time,
+    timedelta,
+    timezone
+)
 
 def extract_date_range(df, date_col="dt"):
-    today = date.today()
+
+    # Use utc time to be in sync with chain & not accidentally get data ahead of time.
+    today = datetime.utcnow()
+    # Convert to regular date
+    today = datetime.strptime(today.strftime("%Y-%m-%d"), "%Y-%m-%d").date()
     if not date_col in df.columns:
         raise ValueError(f"Expected column: {date_col} in df but not there")
 
@@ -29,6 +39,14 @@ def extract_date_range(df, date_col="dt"):
 
     return date_range
 
+
+def delta_until_utc_post_midnight():
+    dt = datetime.now(timezone.utc)
+    tomorrow = dt + timedelta(days=1)
+    dt_combined = datetime.combine(tomorrow, time.min)
+    dt_combined = dt_combined.replace(tzinfo=timezone.utc)
+    dt_combined = dt_combined + timedelta(hours=1)
+    return dt_combined - dt
 
 
 if __name__ == "__main__":
